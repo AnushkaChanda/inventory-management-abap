@@ -1,0 +1,158 @@
+CLASS zcl_inventory_report DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC.
+
+  PUBLIC SECTION.
+    INTERFACES if_oo_adt_classrun.
+
+    TYPES: ty_price TYPE p LENGTH 8 DECIMALS 2.
+
+    TYPES: BEGIN OF ty_product,
+             id    TYPE i,
+             name  TYPE string,
+             qty   TYPE i,
+             price TYPE ty_price,
+           END OF ty_product.
+
+    DATA: gt_inventory TYPE STANDARD TABLE OF ty_product,
+          gs_product   TYPE ty_product.
+
+    METHODS:
+       run IMPORTING out TYPE REF TO if_oo_adt_classrun_out,
+       init_data,
+       add_product IMPORTING out TYPE REF TO if_oo_adt_classrun_out
+                              id TYPE i
+                              name TYPE string
+                              qty TYPE i
+                              price TYPE ty_price,
+       update_product IMPORTING out TYPE REF TO if_oo_adt_classrun_out
+                              id TYPE i
+                              qty TYPE i,
+       delete_product IMPORTING out TYPE REF TO if_oo_adt_classrun_out
+                              id TYPE i,
+       display_alv IMPORTING out TYPE REF TO if_oo_adt_classrun_out.
+
+ENDCLASS.
+
+
+
+
+
+
+CLASS zcl_inventory_report IMPLEMENTATION.
+
+  METHOD if_oo_adt_classrun~main.
+
+    DATA(lo_obj) = NEW zcl_inventory_report( ).
+    lo_obj->run( out ).
+
+  ENDMETHOD.
+
+
+
+  METHOD run.
+
+    init_data( ).
+
+    DATA: action TYPE string VALUE 'ADD',   
+      lv_id TYPE i VALUE 3,
+      lv_name TYPE string VALUE 'Keyboard',
+      lv_qty TYPE i VALUE 20,
+      lv_price TYPE ty_price VALUE 1500.
+
+    CASE action.
+      WHEN 'ADD'.
+        add_product( out = out id = lv_id name = lv_name qty = lv_qty price = lv_price ).
+      WHEN 'UPDATE'.
+        update_product( out = out id = lv_id qty = lv_qty ).
+      WHEN 'DELETE'.
+        delete_product( out = out id = lv_id ).
+    ENDCASE.
+
+    display_alv( out ).
+
+  ENDMETHOD.
+
+
+  METHOD init_data.
+
+    CLEAR gt_inventory.
+
+    APPEND VALUE #( id = 1 name = 'Laptop' qty = 10 price = 50000 ) TO gt_inventory.
+    APPEND VALUE #( id = 2 name = 'Mouse' qty = 50 price = 500 ) TO gt_inventory.
+
+  ENDMETHOD.
+
+
+
+  METHOD add_product.
+
+    DATA(ls_new) = VALUE ty_product(
+      id = id
+      name = name
+      qty = qty
+      price = price ).
+
+    READ TABLE gt_inventory WITH KEY id = id TRANSPORTING NO FIELDS.
+    IF sy-subrc = 0.
+      out->write( 'Product already exists' ).
+      RETURN.
+    ENDIF.
+
+    APPEND ls_new TO gt_inventory.
+
+    out->write( 'Product Added Successfully' ).
+
+  ENDMETHOD.
+
+
+
+  METHOD update_product.
+
+    READ TABLE gt_inventory INTO gs_product WITH KEY id = id.
+
+    IF sy-subrc <> 0.
+      out->write( 'Product not found' ).
+      RETURN.
+    ENDIF.
+
+    gs_product-qty = qty.
+
+    MODIFY gt_inventory FROM gs_product INDEX sy-tabix.
+
+    out->write( 'Product Updated Successfully' ).
+
+  ENDMETHOD.
+
+
+
+  METHOD delete_product.
+
+    DELETE gt_inventory WHERE id = id.
+
+    IF sy-subrc = 0.
+      out->write( 'Product Deleted Successfully' ).
+    ELSE.
+      out->write( 'Product not found' ).
+    ENDIF.
+
+  ENDMETHOD.
+
+
+
+
+
+  METHOD display_alv.
+
+    out->write( '--- Inventory List ---' ).
+
+    LOOP AT gt_inventory INTO gs_product.
+      out->write(
+        |ID: { gs_product-id }, Name: { gs_product-name }, Qty: { gs_product-qty }, Price: { gs_product-price }|
+      ).
+    ENDLOOP.
+
+  ENDMETHOD.
+
+ENDCLASS. 
